@@ -1,0 +1,4 @@
+	<script>
+	top.location.replace("/");
+	</script>
+	
