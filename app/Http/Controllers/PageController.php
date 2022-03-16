@@ -121,7 +121,6 @@ class PageController extends Controller
                 $data['thumbnail'][$key] = $thumb;
             }
         }
-
         return view($url, $data);
     }
 
@@ -157,6 +156,7 @@ class PageController extends Controller
             ->leftJoin('sidebar_sub','board.board_id','=','sidebar_sub.id')
             ->first();
 
+        // 해당 게시글 없을시
         if(!isset($data['content'])) print "<script type='text/javascript'>alert('존재하지 않는 게시글입니다.'); history.back();</script>";
 
         $data['s_title'] = $data['content']['s_title']; // 서브 타이틀명

@@ -83,6 +83,7 @@
                 <div class="col mb-2">
                     <spa><strong>총 {{ $list->total() }} 건</strong></span>
                 </div>
+                <div class="col-auto float-right"><span>※일주일치 데이터만 보관됩니다.</span></div>
             </div>
             <table class="table table-bordered table-sm text-center" id="exper_list" style="width:100%">
                 <thead class="bg-gray">

@@ -104,6 +104,7 @@
 
                     <div class="col-auto">
                         <a class="btn btn-sm btn-info" id="blacklist_btn">블랙리스트</a>
+                        <a class="btn btn-sm btn-danger" id="blacklist_add_btn">블랙리스트 추가</a>
                     </div>
                 </div><!-- ./row END -->
             </form>
@@ -114,6 +115,7 @@
                 <div class="col mb-2">
                     <spa><strong>총 :  {{ $list->total() }}건</strong></span>
                 </div>
+                <div class="col-auto float-right"><span>※6개월치 데이터만 보관됩니다.</span></div>
             </div>
             <table class="table table-bordered table-sm text-center table-hover" id="customer_list">
                 <thead class="bg-gray">
@@ -205,6 +207,42 @@
         </form>
     </div>
     <!-- ./Modal -->
+
+     <!-- 블랙리스트 추가 Modal -->
+     <div class="modal fade" id="blacklist_add_modal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-sm" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">블랙리스트 추가</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="blacklist_store" method="post">
+                            @csrf
+                            <div class="row">
+                                <div class="form-group col-12">
+                                    <label for="inputName">IP 주소</label> (예 : 1.234.56.78)
+                                    <input type="text" class="form-control form-control-sm" name="ip" required autocomplete="off">
+                                </div>
+                                <div class="form-group col-12">
+                                    <label for="inputName">내용</label>
+                                    <textarea class="form-control form-control-sm" name="msg"></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-info btn-sm float-left" onclick="blacklistStore()">수정</button>
+                        <button type="button" class="btn btn-secondary btn-sm float-right" data-dismiss="modal">닫기</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    <!-- ./Modal -->
+
 </section>
 
 
@@ -228,9 +266,39 @@
 @endif
 
 <script>
+    // 블랙리스트 현황 modal
     $("#blacklist_btn").click(function(){
         $("#blacklist_modal").modal('show');
     });
+
+    // 블랙리스트 추가 modal
+    $("#blacklist_add_btn").click(function(){
+        $("#blacklist_add_modal").modal('show');
+    });
+
+
+    // 블랙리스트 추가
+    function blacklistStore(){
+        if (confirm('블랙리스트로 추가 하시겠습니까?') == false) return false; //취소시 return
+        $.ajax({
+            headers: {'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
+            url: "{{ route('blacklist.store') }}",
+            type: 'POST',
+            data: $('#blacklist_store').serialize(),
+            dataType: 'json',
+            success:function(data){  
+                // 성공시
+                if(data.status == "success") {
+                    alert("성공 하였습니다.");
+                    location.reload();
+                // 실패시 validation message 출력
+                } else if(data.status == "error") {
+                    alert(data.msg);
+                    return false;
+                }
+            }
+        });
+    }
 
 </script>
 

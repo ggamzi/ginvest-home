@@ -1731,7 +1731,6 @@
                                 _trk_flashEnvView("_TRK_CP=카테고리명","_TRK_PI=RGR","_TRK_SX=성별","_TRK_AG=특성");
                                 // formpage api END
 
-                                
                                 location.reload();
                                 break;
                             case "error":

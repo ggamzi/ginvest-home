@@ -11,6 +11,7 @@ use App\Models\ExperUser;
 use App\Models\User;
 use App\Models\Acl;
 use App\Models\Log;
+use App\Models\BlackList;
 use Mews\Purifier\Purifier;
 use Auth;
 use DB;
@@ -32,9 +33,10 @@ class AdminController extends Controller
 
     /**
      *  관리자 페이지 로그인
+     *  'rank' = 1 : 관리자 등급
      */
     public function login(Request $request) {
-        // 로그인 성공시
+        /** 로그인 성공 */
         if( auth()->attempt([ 'account' => request()->input('account'), 'password' => request()->input('password'), 'rank' => 1 ])) {
             //성공시 로그 저장 
             DB::table('log')->insert([
@@ -47,7 +49,9 @@ class AdminController extends Controller
                 'updated_at' => now()
             ]);
             return redirect('/admin');
-        } else {
+        }
+        /** 로그인 실패 */
+        else {
             // 아이디가 틀린 경우
             $chk_account = DB::table('users')->where('account',$request->input('account'))->first();
             if(!$chk_account) {
@@ -84,7 +88,7 @@ class AdminController extends Controller
     }
 
     /**
-     *  로그아웃auth()->check()
+     *  로그아웃 auth()->check()
      */
     public function logout(Request $request) {
         auth()->logout();
@@ -118,19 +122,17 @@ class AdminController extends Controller
         $data['board'] = sidebarSub::get();
         // 일별 방문자 리스트
         $visitor_query = DB::table('visitors')->select('date','count')->orderby('date','desc')->limit(7);
+
         $data['visitor'] = DB::table(DB::raw("({$visitor_query->tosql()}) as visitors"))
                     ->mergeBindings($visitor_query)
                     ->orderby('date','asc')->get();
-        
-        
-        //return dd($data);
 
         return view('adm/admin_index', $data);
     }
 
     /**
      *  대시보드에서 필요한 모달 데이터
-     *  @param string $table    : 테이블명
+     *  @param string $table    : 테이블명 (board:신규 게시글 / visitors : 방문자 수)
      *  @param int $id          : row ID (게시글 불러올 때 사용)
      *  @param string $date     : 방문자 조회시 사용 (daterangepicker 'Y-m-d ~ Y-m-d')
      */
@@ -148,11 +150,13 @@ class AdminController extends Controller
             $start_date = $date[0]; // 조회 시작일
             $end_date = date("Y-m-d",strtotime("{$date[1]} +1day"));    // 조회 마지막 일
 
+            // 해당 기간동안의 방문자 수 return
             $data = DB::table($table)->where('date','<',$end_date)->where('date','>=',$start_date)->orderby('date','asc')->get();
         }
         
         return response()->json(["status"=>"success", "data"=>$data],200);
     }
+    
     /**
      *  대시보드에서 신규 게시물 승인처리
      *  @param int $id  : 게시물 id
@@ -224,7 +228,7 @@ class AdminController extends Controller
         // 게시판 목록
         $data['board_list'] = sidebarSub::where('is_board','Y')->get();
 
-        
+        // redirect url
         if($request->has('prev_url')){
             $data['prev_url'] = $request->input('prev_url');
         } else {
@@ -258,20 +262,24 @@ class AdminController extends Controller
      */
     public function postUpdate(Request $request) {
         //return dd($request->all());
-        $id = $request->input('id');
-
-        $board_name = $request->input('board_name');
-        $prev_thumb = $request->input('prev_thumb');
+        $id = $request->input('id');    // 게시글 id
+        $board_name = $request->input('board_name');    // 게시글이 속한 게시판
+        $prev_thumb = $request->input('prev_thumb');    // 썸네일
 
         // purifer filter 적용한 게시물 내용
         $input_content = \Purifier::clean($request->input('content'), function (HTMLPurifier_Config $config) {
             $config->set('HTML.AllowedElements','div[style]');  // div -> style tag 허용
         });
         
-
-        // 게시글 내용에서 이미지명 추출하여 저장.
-        $imgArr = array();
-        preg_match_all("/<img[^>]*src=[\"']?([^>\"']+)[\"']?[^>]*>/i", $input_content, $match);
+        /**
+         *  게시글 본문 이미지 업로드 (SmartEditor2)
+         *   - 게시글 저장하기 전에는 업로드된 파일은 "se2/upload_temp" 경로에 임시 저장됨.
+         *  1. 게시글 내용에서 이미지이름 추출하여 배열로 저장
+         *  2. "se2/upload_temp/~~"로 저장되어 있는 경로를 "se2/upload_imt/~~" 로 바꿔줌
+         *  3. 게시글 본문에도 동일하게 경로를 바꿔주고 이미지가 출력될 수 있도록 함
+         */
+        $imgArr = array();      // 이미지명 리스트를 넣을 배열
+        preg_match_all("/<img[^>]*src=[\"']?([^>\"']+)[\"']?[^>]*>/i", $input_content, $match); // <img src ~~ /> 를 찾아서 이미지명 추출
         foreach ($match[1] as $row) {
             $img_name = explode("/",$row);
             $img_name = end($img_name);
@@ -283,10 +291,10 @@ class AdminController extends Controller
         // 실제 게시판 내용에서도 경로 변경 후 저장
         $content = str_replace ("/upload_temp/", "/upload_img/", $input_content);
 
-        // 썸네일 있을 경우
+        // 썸네일 있을 경우. 기존 썸네일 삭제 후 새로 업로드한 썸네일로 교체
         if($request->hasFile('thumbnail')){
 
-            $file_path = $board_name."/".$prev_thumb;
+            $file_path = $board_name."/".$prev_thumb;   // 썸네일 경로
 
             if(file_exists($file_path) && $prev_thumb != null) unlink($file_path);  // 기존 이미지 삭제
 
@@ -294,11 +302,13 @@ class AdminController extends Controller
             $request->thumbnail->move(public_path($board_name), $imageName);
             $path = $imageName; // DB에 입력될 파일명
         } else {
-            $path = $prev_thumb;
+            $path = $prev_thumb;    // 변경사항 없을 때
         }
 
+        // option value 사용하는 게시판일 경우
         $option = $request->has('option_value') ? implode('$$$', $request->input('option_value')) : null;
 
+        // 게시글 공개 여부 (Y:공개, N:비공개)
         $is_view = $request->input('is_view') == 'on' ? 'Y' : 'N';
 
         board::whereId($id)->update([
@@ -312,31 +322,32 @@ class AdminController extends Controller
             'content' => $content,
             'notice' => $request->input('notice','N'),
         ]);
-        // return redirect($request->input('prev_url'))->with('message','수정되었습니다.');        
         return redirect()->back()->with(['message'=>'수정되었습니다.','prev_url'=>$request->input('prev_url')]);        
     }
 
     /**
      *  게시글 삭제
+     *  @param array $id    : 삭제된 게시글 id
      */
     public function postDelete(Request $request) {
 
         $id = $request->input('id');
         
-        // 배열이 아니면 배열로 만들어줌
+        // 배열이 아니면 배열로 만들어줌 (선택 삭제시 여러개를 지우기 위함)
         $idArr = explode(',',$id);
 
         $res = board::select('board.*','sidebar_sub.title as path')->whereIn('board.id',$idArr)->leftJoin('sidebar_sub','board.board_id','=','sidebar_sub.id')->get();
+        
         foreach ($res as $row) {
 
-            // 게시글의 이미지도 삭제
+            // 게시글 본문 이미지 삭제
             $imgArr = array();
             // 이미지 이름 추출
-            preg_match_all("/<img[^>]*src=[\"']?([^>\"']+)[\"']?[^>]*>/i", $row->content, $match);
+            preg_match_all("/<img[^>]*src=[\"']?([^>\"']+)[\"']?[^>]*>/i", $row->content, $match);   // <img src ~~ /> 를 찾아서 이미지명 추출
             foreach ($match[1] as $row_match) {
                 $img_name = explode("/",$row_match);
                 $img_name = end($img_name);
-                if(file_exists("se2/upload_img/".$img_name)) unlink ("se2/upload_img/".$img_name);
+                if(file_exists("se2/upload_img/".$img_name)) unlink ("se2/upload_img/".$img_name);  // temp 디렉토리에 파일이 있을 경우 temp->img 경로 변경
             }
 
             // 썸네일이 있는 경우 삭제
@@ -354,8 +365,8 @@ class AdminController extends Controller
      *  @param int $id          : 게시글 id
      *  @param string $thumb    : 썸네일 경로
      */
-    public function postThumbDelete(Request $request) {
-
+    public function postThumbDelete(Request $request)
+    {
         $id = $request->input('id');
         $thumb = $request->input('thumb');
         // 썸네일 파일 존재하면 삭제 후 DB에 업데이트
@@ -389,8 +400,8 @@ class AdminController extends Controller
      *  @param string $title        : 게시글 제목
      *  @param string $content      : 게시글 내용
      *  @param string $thumbnail    : 썸네일 업로드시 파일명
-     *  @param arrray $option_value : 게시판별로 추가되는 내용들. 
-     *  @param ENUM $notice         : 공지사항 
+     *  @param array $option_value : 게시판별로 추가되는 내용들. 
+     *  @param enum $notice         : 공지사항 
      */
     public function postCreate(Request $request) {
         $board_id = $request->input('board_id');
@@ -415,10 +426,15 @@ class AdminController extends Controller
             $is_view = $request->input('is_view','Y') == 'Y' ? 'Y' : 'N';
         }
 
-        // 게시글 내용에서 이미지 추출하여 저장.
-        // smarteditor 에서 사진 첨부시 'se2/upload_temp'에 저장이 됨.
+        /**
+         *  게시글 본문 이미지 업로드 (SmartEditor2)
+         *   - 게시글 저장하기 전에는 업로드된 파일은 "se2/upload_temp" 경로에 임시 저장됨.
+         *  1. 게시글 내용에서 이미지이름 추출하여 배열로 저장
+         *  2. "se2/upload_temp/~~"로 저장되어 있는 경로를 "se2/upload_imt/~~" 로 바꿔줌
+         *  3. 게시글 본문에도 동일하게 경로를 바꿔주고 이미지가 출력될 수 있도록 함
+         */
         $imgArr = array();
-        preg_match_all("/<img[^>]*src=[\"']?([^>\"']+)[\"']?[^>]*>/i", $input_content, $match);
+        preg_match_all("/<img[^>]*src=[\"']?([^>\"']+)[\"']?[^>]*>/i", $input_content, $match); // <img src ~~ /> 를 찾아서 이미지명 추출
         foreach ($match[1] as $row) {
             $img_name = explode("/",$row);
             $img_name = end($img_name);
@@ -436,7 +452,7 @@ class AdminController extends Controller
             $request->thumbnail->move(public_path($board_name), $imageName);
             $path = $imageName; // DB에 입력될 파일명
         } else {
-            $path = null;
+            $path = null;   // 썸네일 없는 경우 NULL
         }
 
         // 옵션 사용시
@@ -468,38 +484,56 @@ class AdminController extends Controller
         return redirect()->back()->with('message','생성되었습니다.');
     }
 
+      //////////////////
+     //  게시판 관리  //
+    //////////////////
     /**
      *  게시판 관리
      */
-    public function boardIndex(Request $request) {
-        $data['list'] = SidebarSub::select('sidebar_sub.*','sidebar_main.name as main_name')->leftJoin('sidebar_main','sidebar_sub.main_title','=','sidebar_main.id')->get();
+    public function boardIndex(Request $request)
+    {
+        $data['list'] = SidebarSub::select('sidebar_sub.*','sidebar_main.name as main_name')
+            ->leftJoin('sidebar_main','sidebar_sub.main_title','=','sidebar_main.id')
+            ->get();
         return view('adm/board_index', $data);
     }
     
     /**
-     * 게시판 정보 모달(ajax)
+     *  게시판 정보 모달(ajax)
+     *  @param int $id  : 게시판 id
      */
-    public function boardInfo(Request $request) {
+    public function boardInfo(Request $request)
+    {
         $id = $request->input('id');
-        $data = sidebarSub::select('sidebar_sub.*','sidebar_main.name as main_name')->leftJoin('sidebar_main','sidebar_sub.main_title','=','sidebar_main.id')->where('sidebar_sub.id',$id)->first();
+        $data = sidebarSub::select('sidebar_sub.*','sidebar_main.name as main_name')
+            ->leftJoin('sidebar_main','sidebar_sub.main_title','=','sidebar_main.id')
+            ->where('sidebar_sub.id',$id)
+            ->first();
 
         return response()->json(['status'=>"success", "data"=>$data],200);
     }
 
     /**
      *  게시판 정보 수정
+     *  @param string $name     : 게시판 이름
+     *  @param string $desc     : 게시판 설명
+     *  @param int $paginate    : 페이지당 게시물 수
+     *  @param enum $is_use     : 게시판 사용 여부 (Y:사용, N : 미사용)
+     *  @param enum $use_thumb  : 썸네일 사용여부 (Y:사용, N : 미사용)
+     *  @param enum $use_apply  : 이벤트 체험신청 사용 여부 (Y:사용, N : 미사용)
+     *  @param enum $use_notice : 공지사항 사용 여부 (Y : 사용, N : 미사용)
      */
     public function boardUpdate(Request $request) {
-        $id = $request->input('id');       
+        $id = $request->input('id');
         
         DB::table('sidebar_sub')->where('id',$id)->update([
-            'name' => $request->input('name'),
-            'desc' => $request->input('desc'),
-            'paginate' => $request->input('paginate'),
-            'is_use' => $request->input('is_use','N'),
-            'use_thumb' => $request->input('use_thumb','N'),
-            'use_apply' => $request->input('use_apply','N'),
-            'use_notice' => $request->input('use_notice','N'),
+            'name' => $request->input('name'),                  // 게시판 이름
+            'desc' => $request->input('desc'),                  // 게시판 설명
+            'paginate' => $request->input('paginate'),          // 페이지당 게시물 수
+            'is_use' => $request->input('is_use','N'),          // 게시판 
+            'use_thumb' => $request->input('use_thumb','N'),    // 노출 여부
+            'use_apply' => $request->input('use_apply','N'),    // 이벤트창 사용 여부
+            'use_notice' => $request->input('use_notice','N'),  // 공지사항 사용 여부
         ]);
 
         return redirect()->back()->with('message','수정되었습니다.');
@@ -511,10 +545,13 @@ class AdminController extends Controller
     /////////////////////
 
     /**
-     * 기본정보 설정
+     *  기본정보 설정
+     *  - param title 값에 따라 탭 active
+     *  @param string $title    : 수정 할 기본정보 타이틀 (terms_use : 이용약관, privacy : 개인정보처리방침, footer : 하단 회사정보 수정)
      */
-    public function infoIndex(Request $request) {
-        $title = $request->input('title','terms_use');
+    public function infoIndex(Request $request)
+    {
+        $title = $request->input('title','terms_use');  // 수정할 타이틀
 
         $data['title'] = $title;
 
@@ -524,9 +561,12 @@ class AdminController extends Controller
     }
 
     /**
-     * 기본정보 모달
+     *  기본정보 수정
+     *  @param string $title    : 수정 할 기본정보 타이틀 (terms_use : 이용약관, privacy : 개인정보처리방침)
+     *  @param text $content    : 수정 될 내용 (SmartEditor2)
      */
-    public function infoUpdate(Request $request) {
+    public function infoUpdate(Request $request)
+    {
         $title = $request->input('title');
         $content = $request->input('content');
 
@@ -538,7 +578,8 @@ class AdminController extends Controller
     /**
      *  팝업관리
      */
-    public function popupIndex(Request $request) {
+    public function popupIndex()
+    {
         $data['pop_list'] = Popup::orderby('order_id','asc')->get();
         
         return view('adm/popup_index',$data);
@@ -546,6 +587,7 @@ class AdminController extends Controller
 
     /**
      *  팝업 modal (ajax)
+     *  @param int $id  : 팝업 id
      */
     public function popupInfo(Request $request) {
         $id = $request->input('id');
@@ -556,8 +598,18 @@ class AdminController extends Controller
 
     /**
      *  팝업 생성
+     *  @param string $desc         : 팝업에 대한 설명
+     *  @param file $img            : 팝업에 사용 될 이미지
+     *  @param string $link         : 링크 될 주소
+     *  @param string $start_date   : 팝업 노출 시작일
+     *  @param string $end_date     : 팝업 노출 종료일
+     *  @param int $width           : 팝업 가로 사이즈 (px)
+     *  @param int $height          : 팝업 세로 사이즈 (px)
+     *  @param int $left            : 팝업 위치 (왼쪽에서 px)
+     *  @param int $top             : 팝업 위치 (위에서 px)
      */
-    public function popupStore(Request $request) {
+    public function popupStore(Request $request)
+    {
        // 팝업이미지 있을 경우
        if($request->has('img')){
             $imageName = time().'.'.$request->img->extension();  
@@ -582,8 +634,15 @@ class AdminController extends Controller
         return redirect()->back()->with('message','생성되었습니다.');
     }
 
-    public function popupOrderUpdate(Request $request) {
+    /**
+     *  팝업 순서 변경
+     *  @param array $popup_list    : 팝업순서 배열로 들어옴
+     */
+    public function popupOrderUpdate(Request $request)
+    {
         $popup_list = $request->input('popup_list');
+        
+        // 배열 순서대로 key 값이 낮을수록 맨 앞 상단에 노출됨
         foreach ($popup_list as $key => $value) {
             Popup::whereId($value)->update(['order_id' => $key+1]);
         }
@@ -592,8 +651,20 @@ class AdminController extends Controller
 
     /**
      *  팝업 업데이트
+     *  @param int $id              : 팝업 id
+     *  @param string $desc         : 팝업에 대한 설명
+     *  @param file $img            : 팝업에 사용 될 이미지
+     *  @param string $link         : 링크 될 주소
+     *  @param string $start_date   : 팝업 노출 시작일
+     *  @param string $end_date     : 팝업 노출 종료일
+     *  @param int $width           : 팝업 가로 사이즈 (px)
+     *  @param int $height          : 팝업 세로 사이즈 (px)
+     *  @param int $left            : 팝업 위치 (왼쪽에서 px)
+     *  @param int $top             : 팝업 위치 (위에서 px)
+     *  @param ENUM $is_use         : 팝업 사용 여부 (Y:사용 / N:미사용)
      */
-    public function popupUpdate(Request $request) {
+    public function popupUpdate(Request $request)
+    {
         $id = $request->input('id');
 
         //팝업이미지 있을 경우
@@ -626,15 +697,17 @@ class AdminController extends Controller
     /**
      *  팝업 삭제
      */
-    public function popupDelete(Request $request) {
+    public function popupDelete(Request $request)
+    {
         $id = $request->input('id');
-
         Popup::whereId($id)->delete();
-        
         return redirect()->back()->with('message','삭제되었습니다.');
     }
 
 
+      ////////////////////////
+     //  관리자 페이지 관리  //
+    ////////////////////////
     /**
      *  Access List 목록 조회
      *  @param int $id  : acl 한개만 조회시
@@ -701,6 +774,9 @@ class AdminController extends Controller
         
         $data = $request->all();
 
+        $expire = Log::where(DB::raw("TIMESTAMPDIFF(MONTH,created_at,now())"),">=",6);
+        if($expire->get()) $expire->delete();
+
         // 카테고리 필드의 ENUM LIST불러오기
         $cate_query = DB::select(DB::raw('SHOW COLUMNS FROM log WHERE Field = "category"'))[0]->Type;
         preg_match('/^enum\((.*)\)$/', $cate_query, $matches);
@@ -736,9 +812,45 @@ class AdminController extends Controller
         $data['list'] = $query->paginate(20)->appends($request->query());
 
         // 블랙리스트
-        $data['blacklist'] = DB::table('black_list')->orderby('created_at')->get();
+        $data['blacklist'] = DB::table('black_list')->orderby('created_at','desc')->get();
 
         return view('adm/log_index', $data);
     }
 
+    /**
+     *  로그 -> 블랙리스트 추가
+     *  @param string $ip   : ip
+     *  @param string $msg  : 내용
+     */
+    public function blacklistStore(Request $request)
+    {
+        $ip = $request->input('ip');
+        $msg = $request->input('msg');
+
+        // ip형식 체크
+        if (!preg_match('/^(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)(?:[.](?:25[0-5]|2[0-4]\d|1\d\d|[1-9]\d|\d)){3}$/',$ip)){
+            return response()->json(['status'=>"error",'msg'=>'잘못된 IP형식 입니다.'], 200);
+        }
+        
+        // 이미 등록된 ip가 있는 경우
+        $ipchk = BlackList::where('ip',$ip)->count();
+        if($ipchk > 0) return response()->json(['status'=>"error",'msg'=>'이미 등록된 IP입니다.'], 200);
+
+        // 블랙리스트 추가
+        BlackList::create([
+            'ip' => ip2long($ip),
+            'desc' => $msg
+        ]);
+        
+        // 로그 기록
+        Log::create([
+            'ip'=> ip2long($_SERVER['REMOTE_ADDR']),
+            'account' => Auth::user()->account,
+            'category' => '블랙리스트',
+            'flag'=>'Y',
+            'msg'=>'블랙리스트 직접 추가 ('.$ip.')' 
+        ]);
+        return response()->json(['status'=>"success",'msg'=>'성공하였습니다.'], 200);
+    }
+    
 }

@@ -20,7 +20,10 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
+        \App\Http\Middleware\EncryptCookies::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        //전역인증
+        // \App\Http\Middleware\GlobalAuth::class,
     ];
 
     /**
@@ -54,9 +57,11 @@ class Kernel extends HttpKernel
      * @var array
      */
     protected $routeMiddleware = [
+        'blacklist.chk' => \App\Http\Middleware\BlacklistChk::class,
         'admin.chk' => \App\Http\Middleware\AdminLoginCheck::class,
         'accessip.chk' => \App\Http\Middleware\AccessIpChk::class,
         'vistor.cnt' => \App\Http\Middleware\VistorCnt::class,
+        'VistorIPCnt.cnt' => \App\Http\Middleware\VistorIPCnt::class,
         'auth' => \App\Http\Middleware\Authenticate::class,
         'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
         'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,

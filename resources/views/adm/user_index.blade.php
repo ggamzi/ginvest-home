@@ -136,14 +136,17 @@
                                         $is_use_class = "primary";
                                     } else if($row->is_use == 'N'){
                                         $is_use = "미사용";
-                                        $is_use_class= "danger";
+                                        $is_use_class= "gray";
                                     } else if($row->is_use == 'L') {
                                         $is_use = "탈퇴";
                                         $is_use_class="warning";
+                                    } else if($row->is_use == 'B') {
+                                        $is_use = "블랙리스트";
+                                        $is_use_class="danger";
                                     }
                                 @endphp
                                 <td class="text-{{ $is_use_class }}">{{ $is_use }}</td>
-                                <td>{{ preg_replace("/([0-9]{3})([0-9]{3,4})([0-9]{4})$/","\\1-\\2-\\3" ,$row->phone) }}</td>
+                                <td>{{ preg_replace("/([0-9]{3})([0-9]{3,4})([0-9]{4})$/","\\1-\\2-****" ,$row->phone) }}</td>
                                 <td>{{ $row->email }}</td>
                                 <td>{{ $row->created_at }}</td>
                                 <td>

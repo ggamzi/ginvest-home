@@ -19,21 +19,23 @@
             {{-- Pagination Elements --}}
             @foreach ($elements as $element)
                 {{-- "Three Dots" Separator --}}
+                {{--
                 @if (is_string($element))
                     <li class="disabled" aria-disabled="true"><span>{{ $element }}</span></li>
                 @endif
+                --}}
 
                 {{-- Array Of Links --}}
                 @if (is_array($element))
-
-                @for ($i = $start_page; $i <= $end_page; $i++)
-                        @if ($i == $paginator->currentPage())
-                            <a class="active" aria-current="page"><strong>{{ $i }}</strong></a>
-                        @else
-                            <a href="{{ $element[$i] }}">{{ $i }}</a>
+                    @foreach ($element as $page => $url)
+                        @if($page >= $start_page && $page <= $end_page)
+                            @if ($page == $paginator->currentPage())
+                                <a class="active" aria-current="page"><strong>{{ $page }}</strong></a>
+                            @else
+                                <a href="{{ $url }}">{{ $page }}</a>
+                            @endif
                         @endif
-                    @endfor
-
+                    @endforeach
                 @endif
             @endforeach
 

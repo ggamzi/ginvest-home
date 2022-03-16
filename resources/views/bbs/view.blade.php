@@ -279,7 +279,7 @@
 
             <!-- buttons -->
             <div class="bbs_btn_wrap">
-                @if(isset($_GET['mode']) && $_GET['mode']=='admin')
+                @if(isset($_GET['mode']) && $_GET['mode']=='admin' || $content->title_n == 'event')
                     <a href="/bbs/{{ $content->title_n }}" class="btn_list">목록</a>
                 @else
                     <a href="{{ url()->previous() }}" class="btn_list">목록</a>

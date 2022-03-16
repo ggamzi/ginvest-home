@@ -123,4 +123,12 @@
     </script>
 @endif
 
+@if(Session::has('message'))
+    <script>
+        $(document).ready(function(){
+            alert("{{session('message')}}");
+        });
+    </script>
+@endif
+
 @endsection

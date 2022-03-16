@@ -338,8 +338,9 @@
     // 컴펌 후 수정
     $("#update_confirm").click(function(){
         if (confirm('수정 하시겠습니까?') == false) return false; //취소시 return
-
-        @if(isset($select_board) && $select_board->use_notice == 'Y')
+        
+        {{--@if(isset($select_board) && $select_board->use_notice == 'Y')--}}
+        @if(isset($post_info) && $post_info->title != 'review')
             // editor 내용
             oEditors.getById["content"].exec("UPDATE_CONTENTS_FIELD", []);
         @endif

@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\ExperUser;
 use App\Models\Log;
+use App\Models\AlertEmail;
 use DB;
 use Auth;
 use App\Mail\AmazonSes;
+use App\Mail\Alert;
 
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
@@ -220,6 +222,12 @@ class UserController extends Controller
      *  @param string $account    : 아이디
      */
     public function searchPwd(Request $request) {
+        //$ip = ip2long($_SERVER['REMOTE_ADDR']);
+        
+        // 블랙 리스트 조회
+        $blacklist_chk = User::where('email',$request->input('email'))->value('is_use');
+        if($blacklist_chk == 'B') return redirect()->back()->withInput($request->input())->with(['message'=>'차단된 계정입니다.']);
+
         $validator = validator(request()->all(), [
             'email' => 'required|email',
             'account' => 'required'
@@ -349,6 +357,9 @@ class UserController extends Controller
      *  체험회원
      */
     public function experienceIndex(Request $request) {
+        // 1주일 이상 지난 로그 삭제
+        $expire = ExperUser::where(DB::raw("TIMESTAMPDIFF(WEEK,created_at,now())"),">=",1);
+        if($expire->get()) $expire->delete();
         
         $query = ExperUser::orderby('created_at','desc');
         // 검색시
@@ -397,7 +408,40 @@ class UserController extends Controller
         }
 
         $data['users'] = $query->paginate(20)->appends($request->query());
+        $data['alert_email'] = AlertEmail::orderby('id','desc')->get();
+
         return view('adm/member_index', $data);
+    }
+
+    /**
+     *  알림 받을 관리자 메일 생성
+     *  @param string $name : 이름
+     *  @param email $email : 메일 주소
+     */
+    public function alertEmailCreate(Request $request){
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|unique:alert_email',
+        ],[
+            'email.required' => '이메일을 입력해 주세요.',
+            'email.email' => '이메일 형식을 확인해 주세요.',
+            'email.unique' => '존재하는 이메일 입니다.',
+        ]);
+        if ($validator->passes()) {
+            AlertEmail::insert(['name'=>$request->input('name',NULL), 'email'=>$request->input('email'), 'is_use' => 'Y']);
+            return response()->json(['status' => 'success'], 200);
+        }
+     
+        return response()->json(['status' => 'error', 'msg'=>$validator->errors()], 200);
+    }
+
+    /**
+     *  알림 받을 관리자 메일 삭제
+     *  @param int $id : id값
+     */
+    public function alertEmailDelete(Request $request){
+        AlertEmail::whereid($request->input('id'))->delete();
+     
+        return redirect()->back()->with(['message'=>'삭제되었습니다.']);
     }
 
 }

@@ -35,6 +35,75 @@
             background-color:rgba(100, 104, 230, 0.8);
         }
     </style>
+    <style>
+        #footer_modify {
+            border-top: 2px solid #26a1e0;
+        }
+        #footer_modify div{
+            margin: 0;
+            padding: 0;
+            border: 0;
+            font-size: 100%;
+            font: inherit;
+            vertical-align: baseline;
+        }
+        #footer_modify .f_sc1 {
+            background: #2f2f2f;
+            padding: 55px 0;
+        }
+        #footer_modify .f_sc1 li {
+            width: 33.3333%;
+            float: left;
+        }
+        #footer_modify .f_sc1 li>div .fc_txt01 {
+    font-size: 15px;
+    color: #fff;
+    letter-spacing: .1em;
+    font-family: 'Open Sans',sans-serif;
+    margin-bottom: 20px;
+}
+#footer_modify .f_sc1 li>div .fc_txt02 {
+    font-size: 18px;
+    color: #fff;
+    letter-spacing: -.04em;
+    margin-bottom: 15px;
+}
+#footer_modify .f_sc1 li>div .fc_txt03 {
+    font-size: 13px;
+    color: #b4b4b4;
+    letter-spacing: -.04em;
+    font-weight: 300;
+}
+        #footer_modify .cont {
+            max-width: 1660px;
+            margin: 0 auto;
+        }
+        #footer_modify ul, li { list-style:none }
+        #footer_modify .f_sc1 li>div .fc_txt01 {
+            font-size: 15px;
+            color: #fff;
+            letter-spacing: .1em;
+            font-family: 'Open Sans',sans-serif;
+            margin-bottom: 20px;
+        }
+        #footer_modify .f_sc1 li>div .fc_txt02 {
+    font-size: 18px;
+    color: #fff;
+    letter-spacing: -.04em;
+    margin-bottom: 15px;
+}
+#footer_modify .f_sc1 li>div .fc_txt03 {
+    font-size: 13px;
+    color: #b4b4b4;
+    letter-spacing: -.04em;
+    font-weight: 300;
+}
+        .f_before {
+    padding-left: 40px;
+    position: relative;
+}
+        
+    </style>
     
 
 @endsection
@@ -73,17 +142,20 @@
                         개인정보처리방침 수정
                     </a>
                 </li>
-                <!-- <li class="nav-item">
-                    <a class="nav-link" id="custom-tabs-four-messages-tab" data-toggle="pill" href="#custom-tabs-four-messages" role="tab" aria-controls="custom-tabs-four-messages" aria-selected="false">Messages</a>
-                </li>
                 <li class="nav-item">
+                    <a class="nav-link @if($title == 'footer') active @endif" href="/admin/set?title=footer">
+                        하단 회사정보 수정
+                    </a>
+                </li>
+                <!-- <li class="nav-item">
                     <a class="nav-link" id="custom-tabs-four-settings-tab" data-toggle="pill" href="#custom-tabs-four-settings" role="tab" aria-controls="custom-tabs-four-settings" aria-selected="true">Settings</a>
                 </li> -->
             </ul>
         </div>
         <div class="card-body">
         <div class="tab-content" id="custom-tabs-four-tabContent">
-            <div class="tab-pane fade active show" id="custom-tabs-four-home" role="tabpanel" aria-labelledby="custom-tabs-four-home-tab" style="height:900px">
+            @if($title != 'footer')
+            <div class="tab-pane fade active show" id="custom-tabs-four-home" role="tabpanel" aria-labelledby="custom-tabs-four-home-tab" style="height:auto">
                 <form action="{{ route('info.update') }}" method="post" id="terms_use_frm" onsubmit="return checkIt()">
                     <input type="hidden" name="title" value="{{ $title }}">
                     @csrf
@@ -98,7 +170,73 @@
                     </div>
                 </form>
             </div>
-
+            @else
+            <div class="tab-pane fade active show" id="custom-tabs-four-home" role="tabpanel" aria-labelledby="custom-tabs-four-home-tab" style="height:auto">
+                {{-- 하단 회사정보 수정 --}}
+                <div id="footer_modify">
+                    <div class="f_sc1">
+                        <div class="cont">
+                            <ul>
+                                <li>
+                                    <div style="height: 118px;">
+                                        <p class="fc_txt01">CUSTOMER CENTER</p>
+                                        <p class="fc_txt02">갤럭시 투자그룹 고객센터&nbsp;&nbsp;<span class="blue_txt">1644.1870 /
+                                                1544.8959</span>
+                                        </p>
+                                        <p class="fc_txt03">평　　일 &nbsp;&nbsp;&nbsp;09:00 - 18:00</p>
+                                        <p class="fc_txt03">점심시간 &nbsp;&nbsp;&nbsp;11:30 - 13:00</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="f_before" style="height: 118px;">
+                                        <p class="fc_txt01">BANK INFO</p>
+                                        <p class="fc_txt02">계좌 국민은행<span class="blue_txt">&nbsp;&nbsp; 421701-04-216870</span>
+                                        </p>
+                                        <p class="fc_txt03">예금주<br>㈜머니랩솔루션즈</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="f_before" style="height: 118px;">
+                                        <p class="fc_txt01">COMPANY INFO</p>
+                                        <p class="fc_txt02">
+                                            <span class="blue_txt">㈜머니랩솔루션즈</span>
+                                        </p>
+                                        <p class="fc_txt03" style="font-size:15px">
+                                            <span>서울 금천구 가산디지털1로 168,우림라이온스밸리B동 209, 210, 1211, 1212호</span>
+                                        </p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="f_sc2">
+                        <div class="cont clr">
+                            <h1>
+                                <img src="/design/img/f_logo.png">
+                            </h1>
+                            <div class="copy_box">
+                                <p class="copy01">
+                                    <span style="color:#fff;">㈜머니랩솔루션즈</span>
+                                </p>
+                                <p class="copy01">대표자 : 김영진</p>
+                                <p class="copy01">사업자등록번호 : 831-81-01343</p>
+                                <p class="copy01">개인정보담당자 : 이재인</p>
+                                <p class="copy01">본사 : 1644.1870</p>
+                                <p class="copy01">지사 : 1544.8959</p>
+                                <p class="copy01">Fax : 02.6929.1743</p>
+                                <p class="copy01">E-mail : thefirstinvestment@naver.com</p>
+                                <p class="copy02">소재지 : 인천광역시 남동구 예술로 174, 10층 / COPYRIGHT Ⓒ 갤럭시투자그룹. All rights reserved</p>
+                                <p class="copy02">본 사이트에서 제공되는 모든 정보는 투자판단의 참고자료이며, 서비스 이용에 따른 최종 책임은 이용자에게 있습니다.</p>
+                            </div>
+                            <div class="goTop">
+                                <a href="#"><img src="/design/img/go_top.jpg"></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ./content END -->
+            </div>
+            @endif
         </div>
         <!-- /.card -->
     </div>

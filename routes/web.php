@@ -5,6 +5,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\MailController;
+use App\Http\Controllers\BlackListController;
 use App\Mail\AmazonSes;
 
 /*
@@ -22,8 +23,13 @@ use App\Mail\AmazonSes;
 Auth::routes();
 
 
+Route::middleware('vistor.cnt')->group(function(){  // 방문자수 count up 및 blacklist 차단
+    Route::middleware('VistorIPCnt.cnt')->group(function(){     //디도스 공격 blacklist 차단
+        Route::group(['prefix' => 'visit'], function (){    //디도스 공격 테스트 페이지
+            Route::get('/', [BlackListController::class, 'mainIndex']);
+        });
+    });
 
-Route::middleware('vistor.cnt')->group(function(){  // 방문자수 count up
     /**
      *  메인페이지
      */
@@ -31,12 +37,12 @@ Route::middleware('vistor.cnt')->group(function(){  // 방문자수 count up
     Route::get('/popup_window/{id}',  [PageController::class, 'popupWindow']);  // 메인화면 팝업
     Route::get('/popup_window/{id}/set',  [PageController::class, 'popupWindowCookieSet']);  // 팝업 관련 cookie
     Route::get('/join_agree_pop',  function () { return view('join_agree_pop'); });
-
+ 
     // 마이페이지
     Route::get('/mypage', [PageController::class, 'mypageIndex'])->middleware('auth');
     Route::post('/mypage-update', [UserController::class, 'mypageUpdate'])->name('mypage.update');         // 마이페이지 -> 수정 쿼리
     Route::post('/mypage-delete', [UserController::class, 'delete'])->name('mypage.delete');         // 마이페이지 -> 수정 쿼리
-
+   
     // 비밀번호 변경 메일보내기
     Route::get('/password-change', function () { return view('mails.pwd-change'); });
 
@@ -58,12 +64,11 @@ Route::middleware('vistor.cnt')->group(function(){  // 방문자수 count up
         Route::post('/create', [UserController::class, 'create'])->name('join.create');         // 생성 쿼리
         Route::get('/agree', function () { return view('join_agree', ['s_title'=>'회원가입']); }); // 약관동의
     });
-
+ 
     /**
      *  VIP 무료체험신청
      */
     Route::post('/exper/create', [PageController::class, 'experCreate']);  // 체험회원 신청
-
 
     /**
      *  상단 메뉴 (회사소개, 투자철학, 서비스)
@@ -98,8 +103,8 @@ Route::middleware('vistor.cnt')->group(function(){  // 방문자수 count up
             Route::post('/create', [AdminController::class, 'boardCreate']);                   // 게시글 생성
         });
     });
-});
 
+});
 
 
 
@@ -146,7 +151,7 @@ Route::middleware('accessip.chk')->group(function(){    // 관리자 페이지 �
                 Route::put('/update', [AdminController::class, 'postUpdate']);       // 게시글 수정 쿼리
                 Route::get('/write', [AdminController::class, 'postwrite']);         // 게시글 작성 페이지
                 Route::get('/delete', [AdminController::class, 'postDelete'])->name('post.delete');         // 게시글 삭제
-                Route::get('/thumb-delete', [AdminController::class, 'postThumbDelete'])->name('post.thumb.delete');         // 게시글 삭제
+                Route::get('/thumb-delete', [AdminController::class, 'postThumbDelete'])->name('post.thumb.delete');         // 썸네일 삭제
 
                 //게시판 관리
                 Route::group(['prefix' => 'board'], function (){
@@ -176,6 +181,9 @@ Route::middleware('accessip.chk')->group(function(){    // 관리자 페이지 �
 
                 // 로그
                 Route::get('/log', [AdminController::class, 'logIndex']);
+
+                // 블랙리스트 추가
+                Route::post('/blacklist-store', [AdminController::class, 'blacklistStore'])->name('blacklist.store'); // 블랙리스트 추가
             });
 
             /**
@@ -191,6 +199,9 @@ Route::middleware('accessip.chk')->group(function(){    // 관리자 페이지 �
 
                 // 관리자 계정 관리
                 Route::get('/member', [UserController::class, 'memberIndex']);             // 관리자 계정 리스트 (정보 수정은 회원관리와 동일한 함수 사용)
+                Route::post('/alert-email-create', [UserController::class, 'alertEmailCreate'])->name('alert_email.create');      // 알람받을 관리자메일 생성 (ajax)
+                Route::get('/alert-email-delete', [UserController::class, 'alertEmailDelete'])->name('alert_email.delete');      // 알람받을 관리자메일 삭제 (ajax)
+                Route::get('/test', function () { return view('mails/alert_test'); });      // 알람받을 관리자메일 삭제 (ajax)
             });
         });
     });

@@ -21,6 +21,10 @@ class VistorCnt
     {
         // IP 주소 불러옴
         $ip = ip2long($_SERVER['REMOTE_ADDR']);
+
+        // 블랙리스트면 404페이지 띄우고 차단
+        $blacklist_chk = DB::table('black_list')->where('ip',$ip)->count();
+        if ($blacklist_chk > 0) die(header("HTTP/1.1 404 Not Found"));
         
         // 쿠키에 ip값이 없을 때 count up (3시간)
         if($request->hasCookie($ip) != true){
